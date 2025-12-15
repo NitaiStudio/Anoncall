@@ -2,208 +2,363 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AnonCall - Secret Secure Video</title>
-    <meta name="theme-color" content="#121212">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AnonCall Pro</title>
+    <meta name="theme-color" content="#000000">
     <link rel="manifest" href="manifest.json">
     
-    <!-- Material Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <!-- Correct Material Icons Import -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <!-- Firebase SDKs (v9 Compat) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <style>
         :root {
-            --primary: #bb86fc;
-            --surface: #1e1e1e;
-            --background: #121212;
-            --on-surface: #ffffff;
-            --danger: #cf6679;
-            --own-chat: #3700b3;
-            --remote-chat: #2c2c2c;
+            --primary: #6C63FF; /* Modern Purple */
+            --primary-gradient: linear-gradient(135deg, #6C63FF, #00A8CC);
+            --bg-dark: #0f0f0f;
+            --chat-bg: #1a1a1a;
+            --my-msg: #6C63FF;
+            --their-msg: #2d2d2d;
+            --white: #ffffff;
+            --danger: #ff4757;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: var(--background); color: var(--on-surface); overflow: hidden; height: 100vh; width: 100vw; }
-
-        /* --- Animations --- */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        /* --- Splash Screen --- */
-        #splash-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--background); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
-        }
-        #splash-screen h1 { font-size: 2.5rem; color: var(--primary); margin-bottom: 10px; }
-        .loader { width: 40px; height: 40px; border: 4px solid var(--surface); border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* --- Landing Page --- */
-        #landing-page {
-            height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;
-        }
-        .btn-primary {
-            background: var(--primary); color: #000; padding: 15px 30px; border: none; border-radius: 30px;
-            font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 20px; display: flex; align-items: center; gap: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s;
-        }
-        .btn-primary:active { transform: scale(0.95); }
-        .legal-text { margin-top: 40px; font-size: 0.8rem; color: #888; max-width: 300px; }
-
-        /* --- Call Interface --- */
-        #call-interface { display: none; position: relative; width: 100%; height: 100%; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Video Container */
-        #video-container { position: relative; width: 100%; height: 100%; background: #000; }
-        video { object-fit: cover; }
-        #remote-video { width: 100%; height: 100%; }
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--white); 
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            width: 100vw; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* --- Fullscreen Video Area --- */
+        #call-interface { 
+            display: none; 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            background: #000;
+        }
+
+        #video-container { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden;
+        }
+
+        video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block;
+        }
+
         #local-video {
-            position: absolute; top: 20px; right: 20px; width: 100px; height: 150px;
-            background: #333; border-radius: 12px; border: 2px solid var(--surface);
-            transform: scaleX(-1); /* Mirror local video */
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10;
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            width: 110px; 
+            height: 160px;
+            background: #333; 
+            border-radius: 15px; 
+            border: 2px solid rgba(255,255,255,0.2);
+            transform: scaleX(-1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); 
+            z-index: 10;
+            transition: all 0.3s ease;
         }
 
-        /* Controls */
+        /* --- Modern Control Bar (Glass Effect) --- */
         #controls-bar {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 15px; z-index: 20;
-            background: rgba(30, 30, 30, 0.8); padding: 10px 20px; border-radius: 40px;
-            backdrop-filter: blur(5px);
+            position: absolute; 
+            bottom: 40px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            display: flex; 
+            gap: 20px; 
+            z-index: 20;
+            padding: 12px 25px; 
+            border-radius: 50px;
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
-        .control-btn {
-            width: 50px; height: 50px; border-radius: 50%; border: none;
-            background: var(--surface); color: white; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 1.5rem; transition: background 0.3s;
-        }
-        .control-btn.active { background: var(--primary); color: #000; }
-        .control-btn.hangup { background: var(--danger); }
 
-        /* --- Chat Overlay --- */
+        .control-btn {
+            width: 55px; 
+            height: 55px; 
+            border-radius: 50%; 
+            border: none;
+            background: rgba(255,255,255,0.1); 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            cursor: pointer; 
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .control-btn i { font-size: 28px; }
+
+        .control-btn:active { transform: scale(0.9); }
+        .control-btn.active { background: var(--white); color: var(--primary); }
+        .control-btn.hangup { background: var(--danger); color: white; transform: scale(1.1); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
+
+        /* --- Android Style Chat Drawer --- */
         #chat-overlay {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 60%;
-            background: var(--surface); border-radius: 20px 20px 0 0;
-            display: flex; flex-direction: column; z-index: 30;
-            transform: translateY(110%); transition: transform 0.3s ease-out;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 75%; /* Taller chat */
+            background: var(--chat-bg); 
+            border-radius: 25px 25px 0 0;
+            display: flex; 
+            flex-direction: column; 
+            z-index: 30;
+            transform: translateY(110%); 
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 -10px 50px rgba(0,0,0,0.7);
         }
         #chat-overlay.open { transform: translateY(0); }
         
         .chat-header {
-            padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;
+            padding: 20px; 
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+            border-radius: 25px 25px 0 0;
         }
-        .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .chat-footer { padding: 10px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; }
-        
-        input[type="text"] {
-            flex: 1; background: #333; border: none; padding: 12px; border-radius: 20px; color: white; outline: none;
+        .chat-header h3 { font-size: 1.2rem; font-weight: 600; }
+
+        .chat-body { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            scroll-behavior: smooth;
         }
 
-        /* Messages */
-        .message { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 0.9rem; word-wrap: break-word; }
-        .message.mine { align-self: flex-end; background: var(--own-chat); color: white; border-bottom-right-radius: 2px; }
-        .message.theirs { align-self: flex-start; background: var(--remote-chat); border-bottom-left-radius: 2px; }
-        .message img { max-width: 100%; border-radius: 10px; margin-top: 5px; }
-        .typing-indicator { font-size: 0.7rem; color: #888; padding-left: 15px; min-height: 15px; }
+        /* --- Chat Bubbles (Android Style) --- */
+        .message { 
+            max-width: 75%; 
+            padding: 12px 16px; 
+            border-radius: 18px; 
+            font-size: 0.95rem; 
+            line-height: 1.4; 
+            position: relative;
+            word-wrap: break-word;
+            animation: popIn 0.3s ease;
+        }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+        .message.mine { 
+            align-self: flex-end; 
+            background: var(--primary-gradient); 
+            color: white; 
+            border-bottom-right-radius: 4px; 
+            box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+        }
+        .message.theirs { 
+            align-self: flex-start; 
+            background: var(--their-msg); 
+            border-bottom-left-radius: 4px; 
+        }
+        .message img { max-width: 100%; border-radius: 12px; margin-top: 5px; }
+
+        /* --- Input Area --- */
+        .chat-footer { 
+            padding: 15px; 
+            display: flex; 
+            gap: 10px; 
+            align-items: center; 
+            background: #252525;
+            padding-bottom: max(15px, env(safe-area-inset-bottom)); /* iPhone X fix */
+        }
+        
+        .chat-input-wrapper {
+            flex: 1;
+            background: #333;
+            border-radius: 30px;
+            padding: 0 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex: 1; 
+            background: transparent; 
+            border: none; 
+            padding: 14px 5px; 
+            color: white; 
+            outline: none; 
+            font-size: 1rem;
+        }
+
+        .icon-btn { color: #aaa; padding: 8px; cursor: pointer; }
+        .send-btn { 
+            background: var(--primary); 
+            color: white; 
+            width: 45px; 
+            height: 45px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        /* --- Landing Page --- */
+        #landing-page {
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+            text-align: center;
+            background: radial-gradient(circle at center, #222, #000);
+        }
+        
+        .pulse-btn {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 18px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 30px;
+            box-shadow: 0 0 20px rgba(108, 99, 255, 0.5);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(108, 99, 255, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(108, 99, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(108, 99, 255, 0); } }
 
         /* Notification Toast */
         #toast {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: #333; color: white; padding: 10px 20px; border-radius: 20px;
-            font-size: 0.9rem; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(50,50,50,0.9); color: white; padding: 12px 25px; border-radius: 30px;
+            font-size: 0.95rem; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            backdrop-filter: blur(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: max-content;
+        }
+
+        /* Splash */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
         }
     </style>
 </head>
 <body>
 
-    <!-- Splash Screen -->
     <div id="splash-screen">
-        <span class="material-icons" style="font-size: 64px; color: var(--primary); margin-bottom: 20px;">vpn_key</span>
-        <h1>AnonCall</h1>
-        <div class="loader"></div>
-        <p style="margin-top: 20px; opacity: 0.7;">Secure. Anonymous. Free.</p>
+        <i class="material-icons" style="font-size: 70px; color: var(--primary); margin-bottom: 20px;">lock</i>
+        <h1 style="font-family: sans-serif; letter-spacing: 2px;">ANONCALL</h1>
     </div>
 
-    <!-- Notification Toast -->
     <div id="toast">Notification</div>
 
-    <!-- Landing Page -->
+    <!-- LANDING PAGE -->
     <div id="landing-page">
-        <span class="material-icons" style="font-size: 80px; color: var(--primary);">security</span>
-        <h2 style="margin-top: 20px;">Anonymous Calls</h2>
-        <p style="opacity: 0.8; margin-bottom: 40px;">No Login. No Logs. Just Links.</p>
-        
-        <button class="btn-primary" onclick="createRoom()">
-            <span class="material-icons">add_link</span> Create Secret Link
-        </button>
-
-        <div class="legal-text">
-            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
-            Privacy: We only temporarily store IP addresses for connection. Data is deleted immediately after the call.
+        <div style="width: 120px; height: 120px; background: rgba(255,255,255,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+            <i class="material-icons" style="font-size: 60px; color: var(--primary);">videocam</i>
         </div>
+        <h2 style="font-size: 2rem; margin-bottom: 10px;">Anonymous Video</h2>
+        <p style="color: #aaa; max-width: 300px; line-height: 1.5;">Secure peer-to-peer calling. No data stored. No login required.</p>
+        
+        <button class="pulse-btn" onclick="createRoom()">
+            <i class="material-icons">add_link</i> Start Secret Call
+        </button>
     </div>
 
-    <!-- Call Interface -->
+    <!-- CALL UI -->
     <div id="call-interface">
         <div id="video-container">
+            <!-- Remote Video (Full Screen) -->
             <video id="remote-video" autoplay playsinline></video>
+            <!-- Local Video (PIP) -->
             <video id="local-video" autoplay playsinline muted></video>
         </div>
 
-        <!-- Call Controls -->
+        <!-- Controls -->
         <div id="controls-bar">
             <button class="control-btn" id="btn-mic" onclick="toggleMic()">
-                <span class="material-icons">mic</span>
+                <i class="material-icons">mic</i>
             </button>
             <button class="control-btn" id="btn-cam" onclick="toggleCam()">
-                <span class="material-icons">videocam</span>
+                <i class="material-icons">videocam</i>
             </button>
             <button class="control-btn" onclick="toggleChat()">
-                <span class="material-icons">chat</span>
-                <div id="chat-badge" style="position:absolute; top:0; right:0; width:10px; height:10px; background:red; border-radius:50%; display:none;"></div>
+                <i class="material-icons">chat_bubble</i>
+                <div id="chat-badge" style="position:absolute; top:12px; right:12px; width:10px; height:10px; background:var(--danger); border-radius:50%; display:none; border:2px solid rgba(20,20,20,0.6);"></div>
             </button>
             <button class="control-btn" onclick="shareRoom()">
-                <span class="material-icons">share</span>
+                <i class="material-icons">ios_share</i>
             </button>
             <button class="control-btn hangup" onclick="hangUp()">
-                <span class="material-icons">call_end</span>
+                <i class="material-icons">call_end</i>
             </button>
         </div>
 
-        <!-- Chat Overlay -->
+        <!-- Chat Drawer -->
         <div id="chat-overlay">
             <div class="chat-header">
-                <h3>Secret Chat</h3>
-                <span class="material-icons" onclick="toggleChat()" style="cursor:pointer;">keyboard_arrow_down</span>
+                <h3>Live Chat</h3>
+                <i class="material-icons" onclick="toggleChat()" style="cursor:pointer; padding: 10px;">keyboard_arrow_down</i>
             </div>
+            
             <div class="chat-body" id="chat-body">
-                <!-- Messages go here -->
+                <!-- Messages will appear here -->
+                <div style="text-align: center; color: #555; font-size: 0.8rem; margin-top: 20px;">Messages disappear after call</div>
             </div>
-            <div class="typing-indicator" id="typing-indicator"></div>
+            
+            <div id="typing-indicator" style="padding: 0 20px; font-size: 0.75rem; color: var(--primary); height: 20px;"></div>
+
             <div class="chat-footer">
-                <span class="material-icons" style="cursor:pointer; color: #888;" onclick="shareLocation()">location_on</span>
-                <label for="img-input">
-                    <span class="material-icons" style="cursor:pointer; color: #888;">image</span>
+                <i class="material-icons icon-btn" onclick="shareLocation()">location_on</i>
+                
+                <label for="img-input" style="display:flex;">
+                    <i class="material-icons icon-btn">image</i>
                 </label>
                 <input type="file" id="img-input" accept="image/*" hidden onchange="uploadImage(this)">
                 
-                <span class="material-icons" id="btn-record" style="cursor:pointer; color: #888;" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">mic</span>
+                <i class="material-icons icon-btn" id="btn-record" 
+                   onmousedown="startRecording()" onmouseup="stopRecording()" 
+                   ontouchstart="startRecording()" ontouchend="stopRecording()">mic</i>
                 
-                <input type="text" id="chat-input" placeholder="Type a message..." onkeyup="handleTyping(event)">
-                <span class="material-icons" style="cursor:pointer; color: var(--primary);" onclick="sendMessage()">send</span>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="chat-input" placeholder="Type..." onkeyup="handleTyping(event)">
+                </div>
+                
+                <div class="send-btn" onclick="sendMessage()">
+                    <i class="material-icons" style="font-size: 20px;">send</i>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURATION (UPDATED)
-        // ==========================================
+        // CONFIG
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyBSVX0b8_qaFmuMPdAssDIEf7FoKVyZQqs",
             authDomain: "anoncall-62c56.firebaseapp.com",
@@ -213,7 +368,6 @@
             messagingSenderId: "883529077726",
             appId: "1:883529077726:web:0a57f2d951ada8656c834f"
         };
-
         const IMGBB_API_KEY = "c762b5315ee9263c36ed04156b0ff758";
         
         const ICE_SERVERS = {
@@ -223,9 +377,7 @@
             ]
         };
 
-        // ==========================================
-        // INITIALIZATION
-        // ==========================================
+        // INIT
         firebase.initializeApp(FIREBASE_CONFIG);
         const db = firebase.database();
 
@@ -235,55 +387,45 @@
         let roomId;
         let isCaller = false;
         let userIP = "0.0.0.0";
-        
-        // Media Recorder
         let mediaRecorder;
         let audioChunks = [];
 
-        // DOM Elements
         const localVideo = document.getElementById('local-video');
         const remoteVideo = document.getElementById('remote-video');
         const chatBody = document.getElementById('chat-body');
 
-        // App Start
         window.onload = async () => {
             setTimeout(() => {
                 document.getElementById('splash-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('splash-screen').style.display = 'none', 500);
-            }, 2000);
+            }, 1500);
 
-            // Get IP for logging
+            // Fetch IP
             try {
                 const res = await fetch('https://api.ipify.org?format=json');
                 const data = await res.json();
                 userIP = data.ip;
-            } catch(e) { console.log("IP fetch failed"); }
+            } catch(e) {}
 
-            // Register Service Worker
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
+                navigator.serviceWorker.register('./sw.js').catch(console.error);
             }
 
-            // Check URL for Room ID
-            const hash = window.location.hash;
-            if (hash.includes("#room=")) {
-                roomId = hash.split("=")[1];
+            if (window.location.hash.includes("#room=")) {
+                roomId = window.location.hash.split("=")[1];
                 joinRoom();
             }
         };
 
-        // ==========================================
-        // ROOM LOGIC
-        // ==========================================
+        // --- CORE LOGIC ---
         function createRoom() {
-            roomId = Math.random().toString(36).substring(2, 10);
+            roomId = Math.random().toString(36).substring(2, 9);
             window.location.hash = "#room=" + roomId;
             isCaller = true;
             initCall();
         }
 
         async function joinRoom() {
-            // Check if room exists/is full
             const roomRef = db.ref('rooms/' + roomId);
             const snapshot = await roomRef.once('value');
             if (snapshot.exists() && snapshot.hasChild('answer')) {
@@ -295,35 +437,41 @@
         }
 
         async function initCall() {
+            // Fullscreen trigger for mobile immersion
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(e => {});
+            }
+
             document.getElementById('landing-page').style.display = 'none';
             document.getElementById('call-interface').style.display = 'block';
 
-            // Log IP
-            db.ref(`rooms/${roomId}/${isCaller ? 'callerIP' : 'calleeIP'}`).set(userIP);
-            
-            // Auto delete on disconnect
+            // Auto clean
             db.ref(`rooms/${roomId}`).onDisconnect().remove();
 
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                // Get Media (Audio + Video)
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" }, 
+                    audio: { 
+                        echoCancellation: true, 
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
                 localVideo.srcObject = localStream;
             } catch (err) {
-                showToast("Camera/Mic access denied!");
+                showToast("Error accessing Camera/Mic");
+                console.error(err);
             }
 
-            // Setup Chat Listeners
             setupChat();
 
             if (isCaller) {
                 createPeerConnection();
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
-                db.ref(`rooms/${roomId}/offer`).set({
-                    sdp: offer.sdp,
-                    type: offer.type
-                });
+                db.ref(`rooms/${roomId}/offer`).set({ sdp: offer.sdp, type: offer.type });
             } else {
-                // Listen for offer
                 db.ref(`rooms/${roomId}/offer`).on('value', async snapshot => {
                     const data = snapshot.val();
                     if (!data) return;
@@ -332,29 +480,21 @@
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
-                    
-                    db.ref(`rooms/${roomId}/answer`).set({
-                        sdp: answer.sdp,
-                        type: answer.type
-                    });
+                    db.ref(`rooms/${roomId}/answer`).set({ sdp: answer.sdp, type: answer.type });
                 });
             }
 
-            // Listen for Answer (Caller only)
             if (isCaller) {
                 db.ref(`rooms/${roomId}/answer`).on('value', async snapshot => {
                     const data = snapshot.val();
                     if (!data || !peerConnection.currentRemoteDescription) return;
-                    const rtcSessionDescription = new RTCSessionDescription(data);
-                    await peerConnection.setRemoteDescription(rtcSessionDescription);
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
                 });
             }
 
-            // Listen for ICE Candidates
             db.ref(`rooms/${roomId}/iceCandidates`).on('child_added', snapshot => {
                 const data = snapshot.val();
                 if (data && peerConnection) {
-                    // Avoid adding own candidates
                     peerConnection.addIceCandidate(new RTCIceCandidate(data));
                 }
             });
@@ -375,6 +515,8 @@
 
             peerConnection.ontrack = event => {
                 remoteVideo.srcObject = event.streams[0];
+                // Ensure audio plays
+                remoteVideo.play().catch(e => console.log("Play error", e));
             };
 
             localStream.getTracks().forEach(track => {
@@ -382,47 +524,39 @@
             });
         }
 
-        // ==========================================
-        // CALL CONTROLS
-        // ==========================================
+        // --- CONTROLS ---
         function toggleMic() {
             const track = localStream.getAudioTracks()[0];
             track.enabled = !track.enabled;
-            document.getElementById('btn-mic').innerHTML = 
-                `<span class="material-icons">${track.enabled ? 'mic' : 'mic_off'}</span>`;
+            const btn = document.getElementById('btn-mic');
+            btn.innerHTML = `<i class="material-icons">${track.enabled ? 'mic' : 'mic_off'}</i>`;
+            btn.style.background = track.enabled ? 'rgba(255,255,255,0.1)' : 'var(--danger)';
         }
 
         function toggleCam() {
             const track = localStream.getVideoTracks()[0];
             track.enabled = !track.enabled;
-            document.getElementById('btn-cam').innerHTML = 
-                `<span class="material-icons">${track.enabled ? 'videocam' : 'videocam_off'}</span>`;
+            const btn = document.getElementById('btn-cam');
+            btn.innerHTML = `<i class="material-icons">${track.enabled ? 'videocam' : 'videocam_off'}</i>`;
+            btn.style.background = track.enabled ? 'rgba(255,255,255,0.1)' : 'var(--danger)';
         }
 
         function hangUp() {
             if (peerConnection) peerConnection.close();
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
-            db.ref(`rooms/${roomId}`).remove(); // Cleanup
+            db.ref(`rooms/${roomId}`).remove();
             window.location.href = '/';
         }
 
         function shareRoom() {
-            const url = window.location.href;
             if (navigator.share) {
-                navigator.share({
-                    title: 'Join Anonymous Call',
-                    text: 'Join my secret secure video call.',
-                    url: url
-                });
+                navigator.share({ title: 'Join Call', url: window.location.href });
             } else {
-                navigator.clipboard.writeText(url);
-                showToast("Link copied to clipboard!");
+                navigator.clipboard.writeText(window.location.href);
+                showToast("Link Copied!");
             }
         }
 
-        // ==========================================
-        // CHAT SYSTEM
-        // ==========================================
+        // --- CHAT ---
         function toggleChat() {
             document.getElementById('chat-overlay').classList.toggle('open');
             document.getElementById('chat-badge').style.display = 'none';
@@ -430,31 +564,24 @@
 
         function setupChat() {
             db.ref(`rooms/${roomId}/messages`).on('child_added', snapshot => {
-                const msg = snapshot.val();
-                appendMessage(msg);
+                appendMessage(snapshot.val());
                 if (!document.getElementById('chat-overlay').classList.contains('open')) {
                     document.getElementById('chat-badge').style.display = 'block';
                 }
             });
-
-            // Typing Indicator
-            const typingRef = db.ref(`rooms/${roomId}/typing`);
-            const input = document.getElementById('chat-input');
             
-            input.addEventListener('focus', () => {
-                typingRef.set(isCaller ? "Caller" : "Peer");
-            });
-            input.addEventListener('blur', () => {
-                typingRef.remove();
-            });
-
-            typingRef.on('value', snap => {
+            // Typing Logic
+            const input = document.getElementById('chat-input');
+            input.addEventListener('focus', () => db.ref(`rooms/${roomId}/typing`).set(isCaller ? "Caller" : "Peer"));
+            input.addEventListener('blur', () => db.ref(`rooms/${roomId}/typing`).remove());
+            
+            db.ref(`rooms/${roomId}/typing`).on('value', snap => {
                 const who = snap.val();
-                const indicator = document.getElementById('typing-indicator');
+                const div = document.getElementById('typing-indicator');
                 if (who && ((isCaller && who === "Peer") || (!isCaller && who === "Caller"))) {
-                    indicator.textContent = "Other person is typing...";
+                    div.textContent = "typing...";
                 } else {
-                    indicator.textContent = "";
+                    div.textContent = "";
                 }
             });
         }
@@ -462,17 +589,14 @@
         function sendMessage(type = 'text', content = null) {
             const input = document.getElementById('chat-input');
             const text = content || input.value;
-            
             if (!text.trim()) return;
 
-            const msgData = {
+            db.ref(`rooms/${roomId}/messages`).push({
                 sender: isCaller ? 'caller' : 'peer',
-                type: type, // text, image, audio, location
+                type: type,
                 content: text,
                 timestamp: Date.now()
-            };
-
-            db.ref(`rooms/${roomId}/messages`).push(msgData);
+            });
             input.value = "";
         }
 
@@ -481,102 +605,68 @@
             const div = document.createElement('div');
             div.className = `message ${isMine ? 'mine' : 'theirs'}`;
             
-            if (msg.type === 'text') {
-                div.textContent = msg.content;
-            } else if (msg.type === 'image') {
-                div.innerHTML = `<img src="${msg.content}" alt="Shared Image" onclick="window.open('${msg.content}')">`;
-            } else if (msg.type === 'location') {
-                div.innerHTML = `<a href="${msg.content}" target="_blank" style="color:white; text-decoration:underline;">📍 View Location</a>`;
-            } else if (msg.type === 'audio') {
-                div.innerHTML = `<audio controls src="${msg.content}" style="max-width:200px; height:30px;"></audio>`;
-            }
+            if (msg.type === 'text') div.textContent = msg.content;
+            else if (msg.type === 'image') div.innerHTML = `<img src="${msg.content}" onclick="window.open('${msg.content}')">`;
+            else if (msg.type === 'location') div.innerHTML = `<a href="${msg.content}" target="_blank" style="color:white; text-decoration:none;">📍 Open Maps</a>`;
+            else if (msg.type === 'audio') div.innerHTML = `<audio controls src="${msg.content}" style="height:30px; max-width:180px;"></audio>`;
 
             chatBody.appendChild(div);
             chatBody.scrollTop = chatBody.scrollHeight;
         }
 
-        function handleTyping(e) {
-            if (e.key === 'Enter') sendMessage();
-        }
+        function handleTyping(e) { if (e.key === 'Enter') sendMessage(); }
 
-        // ==========================================
-        // MEDIA FEATURES (IMG, AUDIO, LOC)
-        // ==========================================
-        
-        // 1. Image Upload
+        // --- ATTACHMENTS ---
         async function uploadImage(input) {
-            if (!input.files || !input.files[0]) return;
-            const file = input.files[0];
-            showToast("Uploading image...");
-
+            if (!input.files[0]) return;
+            showToast("Uploading...");
             const formData = new FormData();
-            formData.append("image", file);
-
+            formData.append("image", input.files[0]);
+            
             try {
-                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-                    method: 'POST',
-                    body: formData
-                });
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
                 const data = await res.json();
-                if (data.success) {
-                    sendMessage('image', data.data.url);
-                } else {
-                    showToast("Upload failed.");
-                }
-            } catch (e) { showToast("Error uploading image"); }
+                if (data.success) sendMessage('image', data.data.url);
+            } catch (e) { showToast("Upload failed"); }
         }
 
-        // 2. Location Sharing
         function shareLocation() {
-            if (!navigator.geolocation) return showToast("Geolocation not supported");
+            if (!navigator.geolocation) return showToast("No Geolocation");
             navigator.geolocation.getCurrentPosition(pos => {
-                const link = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                sendMessage('location', link);
-            }, () => showToast("Permission denied"));
+                sendMessage('location', `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`);
+            });
         }
 
-        // 3. Audio Recording
         function startRecording() {
             showToast("Recording...");
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 mediaRecorder = new MediaRecorder(stream);
                 mediaRecorder.start();
                 audioChunks = [];
-                mediaRecorder.addEventListener("dataavailable", event => {
-                    audioChunks.push(event.data);
-                });
-                
-                // Auto stop after 10s to prevent large DB size
-                setTimeout(() => {
-                    if (mediaRecorder.state === "recording") stopRecording();
-                }, 10000);
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                document.getElementById('btn-record').style.color = 'var(--danger)';
             });
         }
 
         function stopRecording() {
-            if (!mediaRecorder || mediaRecorder.state === "inactive") return;
+            if (!mediaRecorder) return;
             mediaRecorder.stop();
-            showToast("Sending audio...");
-            
-            mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            document.getElementById('btn-record').style.color = '#aaa';
+            mediaRecorder.onstop = () => {
                 const reader = new FileReader();
-                reader.readAsDataURL(audioBlob); 
+                reader.readAsDataURL(new Blob(audioChunks)); 
                 reader.onloadend = () => {
-                    const base64String = reader.result;
-                    sendMessage('audio', base64String);
+                    sendMessage('audio', reader.result);
                 };
-            });
+            };
         }
 
-        // Utility
         function showToast(text) {
             const t = document.getElementById('toast');
             t.textContent = text;
             t.style.opacity = '1';
             setTimeout(() => t.style.opacity = '0', 3000);
         }
-
     </script>
 </body>
 </html>
