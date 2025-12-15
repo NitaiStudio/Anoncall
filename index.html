@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AnonCall - Secret Secure Video</title>
+    <meta name="theme-color" content="#121212">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Firebase SDKs (v9 Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #bb86fc;
+            --surface: #1e1e1e;
+            --background: #121212;
+            --on-surface: #ffffff;
+            --danger: #cf6679;
+            --own-chat: #3700b3;
+            --remote-chat: #2c2c2c;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--background); color: var(--on-surface); overflow: hidden; height: 100vh; width: 100vw; }
+
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* --- Splash Screen --- */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--background); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        #splash-screen h1 { font-size: 2.5rem; color: var(--primary); margin-bottom: 10px; }
+        .loader { width: 40px; height: 40px; border: 4px solid var(--surface); border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Landing Page --- */
+        #landing-page {
+            height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;
+        }
+        .btn-primary {
+            background: var(--primary); color: #000; padding: 15px 30px; border: none; border-radius: 30px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 20px; display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s;
+        }
+        .btn-primary:active { transform: scale(0.95); }
+        .legal-text { margin-top: 40px; font-size: 0.8rem; color: #888; max-width: 300px; }
+
+        /* --- Call Interface --- */
+        #call-interface { display: none; position: relative; width: 100%; height: 100%; }
+        
+        /* Video Container */
+        #video-container { position: relative; width: 100%; height: 100%; background: #000; }
+        video { object-fit: cover; }
+        #remote-video { width: 100%; height: 100%; }
+        #local-video {
+            position: absolute; top: 20px; right: 20px; width: 100px; height: 150px;
+            background: #333; border-radius: 12px; border: 2px solid var(--surface);
+            transform: scaleX(-1); /* Mirror local video */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10;
+        }
+
+        /* Controls */
+        #controls-bar {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; z-index: 20;
+            background: rgba(30, 30, 30, 0.8); padding: 10px 20px; border-radius: 40px;
+            backdrop-filter: blur(5px);
+        }
+        .control-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none;
+            background: var(--surface); color: white; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 1.5rem; transition: background 0.3s;
+        }
+        .control-btn.active { background: var(--primary); color: #000; }
+        .control-btn.hangup { background: var(--danger); }
+
+        /* --- Chat Overlay --- */
+        #chat-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60%;
+            background: var(--surface); border-radius: 20px 20px 0 0;
+            display: flex; flex-direction: column; z-index: 30;
+            transform: translateY(110%); transition: transform 0.3s ease-out;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+        #chat-overlay.open { transform: translateY(0); }
+        
+        .chat-header {
+            padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;
+        }
+        .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-footer { padding: 10px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; }
+        
+        input[type="text"] {
+            flex: 1; background: #333; border: none; padding: 12px; border-radius: 20px; color: white; outline: none;
+        }
+
+        /* Messages */
+        .message { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 0.9rem; word-wrap: break-word; }
+        .message.mine { align-self: flex-end; background: var(--own-chat); color: white; border-bottom-right-radius: 2px; }
+        .message.theirs { align-self: flex-start; background: var(--remote-chat); border-bottom-left-radius: 2px; }
+        .message img { max-width: 100%; border-radius: 10px; margin-top: 5px; }
+        .typing-indicator { font-size: 0.7rem; color: #888; padding-left: 15px; min-height: 15px; }
+
+        /* Notification Toast */
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: #333; color: white; padding: 10px 20px; border-radius: 20px;
+            font-size: 0.9rem; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <span class="material-icons" style="font-size: 64px; color: var(--primary); margin-bottom: 20px;">vpn_key</span>
+        <h1>AnonCall</h1>
+        <div class="loader"></div>
+        <p style="margin-top: 20px; opacity: 0.7;">Secure. Anonymous. Free.</p>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast">Notification</div>
+
+    <!-- Landing Page -->
+    <div id="landing-page">
+        <span class="material-icons" style="font-size: 80px; color: var(--primary);">security</span>
+        <h2 style="margin-top: 20px;">Anonymous Calls</h2>
+        <p style="opacity: 0.8; margin-bottom: 40px;">No Login. No Logs. Just Links.</p>
+        
+        <button class="btn-primary" onclick="createRoom()">
+            <span class="material-icons">add_link</span> Create Secret Link
+        </button>
+
+        <div class="legal-text">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
+            Privacy: We only temporarily store IP addresses for connection. Data is deleted immediately after the call.
+        </div>
+    </div>
+
+    <!-- Call Interface -->
+    <div id="call-interface">
+        <div id="video-container">
+            <video id="remote-video" autoplay playsinline></video>
+            <video id="local-video" autoplay playsinline muted></video>
+        </div>
+
+        <!-- Call Controls -->
+        <div id="controls-bar">
+            <button class="control-btn" id="btn-mic" onclick="toggleMic()">
+                <span class="material-icons">mic</span>
+            </button>
+            <button class="control-btn" id="btn-cam" onclick="toggleCam()">
+                <span class="material-icons">videocam</span>
+            </button>
+            <button class="control-btn" onclick="toggleChat()">
+                <span class="material-icons">chat</span>
+                <div id="chat-badge" style="position:absolute; top:0; right:0; width:10px; height:10px; background:red; border-radius:50%; display:none;"></div>
+            </button>
+            <button class="control-btn" onclick="shareRoom()">
+                <span class="material-icons">share</span>
+            </button>
+            <button class="control-btn hangup" onclick="hangUp()">
+                <span class="material-icons">call_end</span>
+            </button>
+        </div>
+
+        <!-- Chat Overlay -->
+        <div id="chat-overlay">
+            <div class="chat-header">
+                <h3>Secret Chat</h3>
+                <span class="material-icons" onclick="toggleChat()" style="cursor:pointer;">keyboard_arrow_down</span>
+            </div>
+            <div class="chat-body" id="chat-body">
+                <!-- Messages go here -->
+            </div>
+            <div class="typing-indicator" id="typing-indicator"></div>
+            <div class="chat-footer">
+                <span class="material-icons" style="cursor:pointer; color: #888;" onclick="shareLocation()">location_on</span>
+                <label for="img-input">
+                    <span class="material-icons" style="cursor:pointer; color: #888;">image</span>
+                </label>
+                <input type="file" id="img-input" accept="image/*" hidden onchange="uploadImage(this)">
+                
+                <span class="material-icons" id="btn-record" style="cursor:pointer; color: #888;" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">mic</span>
+                
+                <input type="text" id="chat-input" placeholder="Type a message..." onkeyup="handleTyping(event)">
+                <span class="material-icons" style="cursor:pointer; color: var(--primary);" onclick="sendMessage()">send</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION (UPDATED)
+        // ==========================================
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBSVX0b8_qaFmuMPdAssDIEf7FoKVyZQqs",
+            authDomain: "anoncall-62c56.firebaseapp.com",
+            databaseURL: "https://anoncall-62c56-default-rtdb.firebaseio.com",
+            projectId: "anoncall-62c56",
+            storageBucket: "anoncall-62c56.firebasestorage.app",
+            messagingSenderId: "883529077726",
+            appId: "1:883529077726:web:0a57f2d951ada8656c834f"
+        };
+
+        const IMGBB_API_KEY = "c762b5315ee9263c36ed04156b0ff758";
+        
+        const ICE_SERVERS = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const db = firebase.database();
+
+        let localStream;
+        let remoteStream;
+        let peerConnection;
+        let roomId;
+        let isCaller = false;
+        let userIP = "0.0.0.0";
+        
+        // Media Recorder
+        let mediaRecorder;
+        let audioChunks = [];
+
+        // DOM Elements
+        const localVideo = document.getElementById('local-video');
+        const remoteVideo = document.getElementById('remote-video');
+        const chatBody = document.getElementById('chat-body');
+
+        // App Start
+        window.onload = async () => {
+            setTimeout(() => {
+                document.getElementById('splash-screen').style.opacity = '0';
+                setTimeout(() => document.getElementById('splash-screen').style.display = 'none', 500);
+            }, 2000);
+
+            // Get IP for logging
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                userIP = data.ip;
+            } catch(e) { console.log("IP fetch failed"); }
+
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
+            }
+
+            // Check URL for Room ID
+            const hash = window.location.hash;
+            if (hash.includes("#room=")) {
+                roomId = hash.split("=")[1];
+                joinRoom();
+            }
+        };
+
+        // ==========================================
+        // ROOM LOGIC
+        // ==========================================
+        function createRoom() {
+            roomId = Math.random().toString(36).substring(2, 10);
+            window.location.hash = "#room=" + roomId;
+            isCaller = true;
+            initCall();
+        }
+
+        async function joinRoom() {
+            // Check if room exists/is full
+            const roomRef = db.ref('rooms/' + roomId);
+            const snapshot = await roomRef.once('value');
+            if (snapshot.exists() && snapshot.hasChild('answer')) {
+                showToast("Room is full!");
+                setTimeout(() => window.location.href = '/', 2000);
+                return;
+            }
+            initCall();
+        }
+
+        async function initCall() {
+            document.getElementById('landing-page').style.display = 'none';
+            document.getElementById('call-interface').style.display = 'block';
+
+            // Log IP
+            db.ref(`rooms/${roomId}/${isCaller ? 'callerIP' : 'calleeIP'}`).set(userIP);
+            
+            // Auto delete on disconnect
+            db.ref(`rooms/${roomId}`).onDisconnect().remove();
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo.srcObject = localStream;
+            } catch (err) {
+                showToast("Camera/Mic access denied!");
+            }
+
+            // Setup Chat Listeners
+            setupChat();
+
+            if (isCaller) {
+                createPeerConnection();
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                db.ref(`rooms/${roomId}/offer`).set({
+                    sdp: offer.sdp,
+                    type: offer.type
+                });
+            } else {
+                // Listen for offer
+                db.ref(`rooms/${roomId}/offer`).on('value', async snapshot => {
+                    const data = snapshot.val();
+                    if (!data) return;
+                    if (!peerConnection) createPeerConnection();
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    
+                    db.ref(`rooms/${roomId}/answer`).set({
+                        sdp: answer.sdp,
+                        type: answer.type
+                    });
+                });
+            }
+
+            // Listen for Answer (Caller only)
+            if (isCaller) {
+                db.ref(`rooms/${roomId}/answer`).on('value', async snapshot => {
+                    const data = snapshot.val();
+                    if (!data || !peerConnection.currentRemoteDescription) return;
+                    const rtcSessionDescription = new RTCSessionDescription(data);
+                    await peerConnection.setRemoteDescription(rtcSessionDescription);
+                });
+            }
+
+            // Listen for ICE Candidates
+            db.ref(`rooms/${roomId}/iceCandidates`).on('child_added', snapshot => {
+                const data = snapshot.val();
+                if (data && peerConnection) {
+                    // Avoid adding own candidates
+                    peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                }
+            });
+        }
+
+        function createPeerConnection() {
+            peerConnection = new RTCPeerConnection(ICE_SERVERS);
+
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    db.ref(`rooms/${roomId}/iceCandidates`).push({
+                        candidate: event.candidate.candidate,
+                        sdpMid: event.candidate.sdpMid,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex
+                    });
+                }
+            };
+
+            peerConnection.ontrack = event => {
+                remoteVideo.srcObject = event.streams[0];
+            };
+
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+        }
+
+        // ==========================================
+        // CALL CONTROLS
+        // ==========================================
+        function toggleMic() {
+            const track = localStream.getAudioTracks()[0];
+            track.enabled = !track.enabled;
+            document.getElementById('btn-mic').innerHTML = 
+                `<span class="material-icons">${track.enabled ? 'mic' : 'mic_off'}</span>`;
+        }
+
+        function toggleCam() {
+            const track = localStream.getVideoTracks()[0];
+            track.enabled = !track.enabled;
+            document.getElementById('btn-cam').innerHTML = 
+                `<span class="material-icons">${track.enabled ? 'videocam' : 'videocam_off'}</span>`;
+        }
+
+        function hangUp() {
+            if (peerConnection) peerConnection.close();
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            db.ref(`rooms/${roomId}`).remove(); // Cleanup
+            window.location.href = '/';
+        }
+
+        function shareRoom() {
+            const url = window.location.href;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Join Anonymous Call',
+                    text: 'Join my secret secure video call.',
+                    url: url
+                });
+            } else {
+                navigator.clipboard.writeText(url);
+                showToast("Link copied to clipboard!");
+            }
+        }
+
+        // ==========================================
+        // CHAT SYSTEM
+        // ==========================================
+        function toggleChat() {
+            document.getElementById('chat-overlay').classList.toggle('open');
+            document.getElementById('chat-badge').style.display = 'none';
+        }
+
+        function setupChat() {
+            db.ref(`rooms/${roomId}/messages`).on('child_added', snapshot => {
+                const msg = snapshot.val();
+                appendMessage(msg);
+                if (!document.getElementById('chat-overlay').classList.contains('open')) {
+                    document.getElementById('chat-badge').style.display = 'block';
+                }
+            });
+
+            // Typing Indicator
+            const typingRef = db.ref(`rooms/${roomId}/typing`);
+            const input = document.getElementById('chat-input');
+            
+            input.addEventListener('focus', () => {
+                typingRef.set(isCaller ? "Caller" : "Peer");
+            });
+            input.addEventListener('blur', () => {
+                typingRef.remove();
+            });
+
+            typingRef.on('value', snap => {
+                const who = snap.val();
+                const indicator = document.getElementById('typing-indicator');
+                if (who && ((isCaller && who === "Peer") || (!isCaller && who === "Caller"))) {
+                    indicator.textContent = "Other person is typing...";
+                } else {
+                    indicator.textContent = "";
+                }
+            });
+        }
+
+        function sendMessage(type = 'text', content = null) {
+            const input = document.getElementById('chat-input');
+            const text = content || input.value;
+            
+            if (!text.trim()) return;
+
+            const msgData = {
+                sender: isCaller ? 'caller' : 'peer',
+                type: type, // text, image, audio, location
+                content: text,
+                timestamp: Date.now()
+            };
+
+            db.ref(`rooms/${roomId}/messages`).push(msgData);
+            input.value = "";
+        }
+
+        function appendMessage(msg) {
+            const isMine = (msg.sender === (isCaller ? 'caller' : 'peer'));
+            const div = document.createElement('div');
+            div.className = `message ${isMine ? 'mine' : 'theirs'}`;
+            
+            if (msg.type === 'text') {
+                div.textContent = msg.content;
+            } else if (msg.type === 'image') {
+                div.innerHTML = `<img src="${msg.content}" alt="Shared Image" onclick="window.open('${msg.content}')">`;
+            } else if (msg.type === 'location') {
+                div.innerHTML = `<a href="${msg.content}" target="_blank" style="color:white; text-decoration:underline;">📍 View Location</a>`;
+            } else if (msg.type === 'audio') {
+                div.innerHTML = `<audio controls src="${msg.content}" style="max-width:200px; height:30px;"></audio>`;
+            }
+
+            chatBody.appendChild(div);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        function handleTyping(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        // ==========================================
+        // MEDIA FEATURES (IMG, AUDIO, LOC)
+        // ==========================================
+        
+        // 1. Image Upload
+        async function uploadImage(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            showToast("Uploading image...");
+
+            const formData = new FormData();
+            formData.append("image", file);
+
+            try {
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    sendMessage('image', data.data.url);
+                } else {
+                    showToast("Upload failed.");
+                }
+            } catch (e) { showToast("Error uploading image"); }
+        }
+
+        // 2. Location Sharing
+        function shareLocation() {
+            if (!navigator.geolocation) return showToast("Geolocation not supported");
+            navigator.geolocation.getCurrentPosition(pos => {
+                const link = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                sendMessage('location', link);
+            }, () => showToast("Permission denied"));
+        }
+
+        // 3. Audio Recording
+        function startRecording() {
+            showToast("Recording...");
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                audioChunks = [];
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+                
+                // Auto stop after 10s to prevent large DB size
+                setTimeout(() => {
+                    if (mediaRecorder.state === "recording") stopRecording();
+                }, 10000);
+            });
+        }
+
+        function stopRecording() {
+            if (!mediaRecorder || mediaRecorder.state === "inactive") return;
+            mediaRecorder.stop();
+            showToast("Sending audio...");
+            
+            mediaRecorder.addEventListener("stop", () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob); 
+                reader.onloadend = () => {
+                    const base64String = reader.result;
+                    sendMessage('audio', base64String);
+                };
+            });
+        }
+
+        // Utility
+        function showToast(text) {
+            const t = document.getElementById('toast');
+            t.textContent = text;
+            t.style.opacity = '1';
+            setTimeout(() => t.style.opacity = '0', 3000);
+        }
+
+    </script>
+</body>
+</html>
