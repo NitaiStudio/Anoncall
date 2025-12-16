@@ -64,7 +64,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            background: #000; /* Black background if no video */
+            background: #000;
         }
 
         #local-video {
@@ -111,7 +111,18 @@
         .status-dot { width: 8px; height: 8px; background: orange; border-radius: 50%; animation: blink 1.5s infinite; }
         @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
 
-        #btn-share-link {
+        #room-info-display {
+            background: rgba(30,30,30,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: none; /* Hidden until room created */
+        }
+
+        #btn-copy-link {
             background: var(--primary);
             color: #000;
             border: none;
@@ -179,9 +190,45 @@
         .icon-btn.recording { color: var(--danger); animation: pulseRed 1s infinite; }
         @keyframes pulseRed { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        /* --- Landing Page --- */
+        /* --- Landing Page (New Design for Code) --- */
         #landing-page { height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; background: #000; }
-        .start-btn { background: var(--primary); color: #000; padding: 16px 32px; border-radius: 30px; font-weight: bold; font-size: 1.1rem; border: none; margin-top: 40px; cursor: pointer; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(138, 180, 248, 0.3); }
+        
+        .room-input-container {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .code-input {
+            background: #222;
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            text-align: center;
+            outline: none;
+            letter-spacing: 2px;
+        }
+        .code-input:focus { border-color: var(--primary); }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .primary-btn {
+            background: var(--primary); color: #000; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 1rem; border: none; cursor: pointer; flex: 1;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        
+        .secondary-btn {
+            background: #333; color: #fff; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 1rem; border: none; cursor: pointer; flex: 1;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
 
         #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 24px; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-size: 0.9rem; white-space: nowrap; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
     </style>
@@ -195,27 +242,42 @@
         <div style="width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
             <i class="material-icons-round" style="font-size: 50px; color: var(--primary);">videocam</i>
         </div>
-        <h1 style="font-size: 2rem; margin-bottom: 8px;">AnonCall</h1>
-        <p style="color: #888; font-size: 0.95rem;">Secure. Fast. Anonymous.</p>
-        <button class="start-btn" onclick="createRoom()">
-            <i class="material-icons-round">add_link</i> Create Call Link
-        </button>
+        <h1 style="font-size: 2rem; margin-bottom: 5px;">AnonCall</h1>
+        <p style="color: #888; font-size: 0.95rem;">Secure. Encrypted. Anonymous.</p>
+
+        <div class="room-input-container">
+            <button class="primary-btn" onclick="createRoom()">
+                <i class="material-icons-round">add</i> Create New Call
+            </button>
+            
+            <div style="display:flex; align-items:center; gap:10px; color:#555; margin: 5px 0;">
+                <div style="flex:1; height:1px; background:#333;"></div> OR <div style="flex:1; height:1px; background:#333;"></div>
+            </div>
+
+            <input type="text" id="room-code-input" class="code-input" placeholder="Enter Room Code">
+            <button class="secondary-btn" onclick="joinByCode()">
+                <i class="material-icons-round">login</i> Join Call
+            </button>
+        </div>
     </div>
 
     <!-- Call Interface -->
     <div id="call-interface">
         <div id="video-container">
-            <!-- IMPORTANT: autoplay playsinline attributes are crucial for mobile -->
             <video id="remote-video" autoplay playsinline></video>
             <video id="local-video" autoplay playsinline muted></video>
             
             <div id="top-bar-container">
                 <div id="connection-status">
                     <div class="status-dot" id="status-dot"></div>
-                    <span id="status-text">Connecting...</span>
+                    <span id="status-text">Ready</span>
                 </div>
-                <button id="btn-share-link" onclick="shareRoom()">
-                    <i class="material-icons-round" style="font-size: 18px;">content_copy</i> Copy Link
+                
+                <!-- Room Code Display -->
+                <div id="room-info-display"></div>
+
+                <button id="btn-copy-link" onclick="shareRoom()">
+                    <i class="material-icons-round" style="font-size: 18px;">content_copy</i> Link
                 </button>
             </div>
         </div>
@@ -273,14 +335,16 @@
         };
         const IMGBB_API_KEY = "c762b5315ee9263c36ed04156b0ff758";
         
-        // Extended STUN Servers for better connectivity
+        // ULTIMATE STUN LIST - Crucial for mobile data connections
         const ICE_SERVERS = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
+                { urls: 'stun:stun4.l.google.com:19302' },
+                { urls: 'stun:stun.services.mozilla.com' },
+                { urls: 'stun:global.stun.twilio.com:3478' }
             ]
         };
 
@@ -290,7 +354,7 @@
         let localStream, remoteStream, peerConnection, roomId;
         let isCaller = false;
         let mediaRecorder, audioChunks = [];
-        let iceCandidateQueue = []; // Queue for ICE candidates
+        let iceCandidateQueue = [];
 
         const localVideo = document.getElementById('local-video');
         const remoteVideo = document.getElementById('remote-video');
@@ -305,28 +369,38 @@
             }
         };
 
+        // --- ROOM LOGIC (UPDATED) ---
         function createRoom() {
-            roomId = Math.random().toString(36).substring(2, 9);
+            // Generate a simple 6-digit code for easier manual entry
+            roomId = Math.floor(100000 + Math.random() * 900000).toString();
             window.location.hash = "#room=" + roomId;
             isCaller = true;
             initCall();
+        }
+
+        function joinByCode() {
+            const code = document.getElementById('room-code-input').value.trim();
+            if(code.length < 4) return showToast("Invalid Code");
+            roomId = code;
+            window.location.hash = "#room=" + roomId;
+            checkAndJoinRoom();
         }
 
         async function checkAndJoinRoom() {
             const snapshot = await db.ref('rooms/' + roomId).once('value');
             if (snapshot.exists()) {
                 if (snapshot.hasChild('offer') && !snapshot.hasChild('answer')) {
-                    isCaller = false;
+                    isCaller = false; // Joiner
                     initCall();
                 } else if (snapshot.hasChild('answer')) {
-                    showToast("Room is busy!");
-                    statusText.innerText = "Room Full";
+                    showToast("Room is full!");
+                    statusText.innerText = "Full";
                 } else {
-                    isCaller = true;
+                    isCaller = true; // Creator (re-entry)
                     initCall();
                 }
             } else {
-                isCaller = true;
+                isCaller = true; // New Room
                 initCall();
             }
         }
@@ -334,18 +408,24 @@
         async function initCall() {
             document.getElementById('landing-page').style.display = 'none';
             document.getElementById('call-interface').style.display = 'block';
-            updateStatus(isCaller ? "Waiting for peer..." : "Joining...");
+            
+            // Show Room Code
+            const roomDisplay = document.getElementById('room-info-display');
+            roomDisplay.style.display = 'block';
+            roomDisplay.innerText = "Code: " + roomId;
+
+            updateStatus(isCaller ? "Waiting..." : "Connecting...");
 
             db.ref(`rooms/${roomId}`).onDisconnect().remove();
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, 
-                    audio: { echoCancellation: true, noiseSuppression: true } 
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
                 });
                 localVideo.srcObject = localStream;
             } catch (err) {
-                showToast("Camera blocked! Check permissions.");
+                showToast("Camera blocked! Enable permissions.");
                 return;
             }
 
@@ -378,11 +458,10 @@
             db.ref(`rooms/${roomId}/iceCandidates`).on('child_added', snapshot => {
                 const data = snapshot.val();
                 if (data) {
-                    // Logic to handle ICE candidates arriving before RemoteDescription
                     if (peerConnection.remoteDescription) {
-                        peerConnection.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("ICE Error", e));
+                        peerConnection.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("ICE add failed", e));
                     } else {
-                        iceCandidateQueue.push(data);
+                        iceCandidateQueue.push(data); // BUFFERING CANDIDATES
                     }
                 }
             });
@@ -402,13 +481,11 @@
             };
 
             peerConnection.ontrack = event => {
-                // FIXED: Force assignment and play
                 remoteVideo.srcObject = event.streams[0];
-                remoteVideo.play().catch(e => console.log("Auto-play prevented", e));
-                
+                remoteVideo.play().catch(e => console.log("Autoplay error", e));
                 updateStatus("Connected");
                 statusDot.style.background = "#34A853";
-                document.getElementById('btn-share-link').style.display = 'none';
+                document.getElementById('btn-copy-link').style.display = 'none'; // Hide link button when connected
             };
             
             peerConnection.onconnectionstatechange = () => {
@@ -417,7 +494,6 @@
                     statusDot.style.background = "red";
                 }
                 if (peerConnection.connectionState === 'connected') {
-                    console.log("Peer Connected");
                     statusDot.style.background = "#34A853";
                 }
             };
@@ -425,11 +501,10 @@
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
         }
 
-        // Process buffered ICE candidates
         function processIceQueue() {
             while (iceCandidateQueue.length > 0) {
                 const candidate = iceCandidateQueue.shift();
-                peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Queue ICE Error", e));
+                peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Queue ICE failed", e));
             }
         }
 
@@ -439,14 +514,17 @@
 
         function shareRoom() {
             const url = window.location.href;
+            const text = `Join my secure video call.\nLink: ${url}\nRoom Code: ${roomId}`;
+            
             if (navigator.share) {
-                navigator.share({ title: 'Join AnonCall', text: 'Join my secure video call:', url: url }).catch(console.error);
+                navigator.share({ title: 'AnonCall', text: text, url: url }).catch(console.error);
             } else {
-                navigator.clipboard.writeText(url);
-                showToast("Link Copied!");
+                navigator.clipboard.writeText(text);
+                showToast("Info Copied! Send to friend.");
             }
         }
 
+        // --- CONTROLS ---
         function toggleMic() {
             const track = localStream.getAudioTracks()[0];
             track.enabled = !track.enabled;
@@ -472,6 +550,7 @@
             window.location.href = window.location.pathname;
         }
         
+        // --- CHAT ---
         function toggleChat() {
             document.getElementById('chat-overlay').classList.toggle('open');
             document.getElementById('chat-badge').style.display = 'none';
