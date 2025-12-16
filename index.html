@@ -16,7 +16,7 @@
 
     <style>
         :root {
-            --primary: #8AB4F8; /* Google Blueish */
+            --primary: #8AB4F8;
             --bg-dark: #000000;
             --surface: #1f1f1f;
             --danger: #EA4335;
@@ -29,7 +29,7 @@
         body { 
             background-color: var(--bg-dark); 
             color: var(--text-primary); 
-            height: 100dvh; /* Mobile viewport fix */
+            height: 100dvh; 
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
@@ -39,7 +39,7 @@
         /* --- Fullscreen Video Area --- */
         #call-interface { 
             display: none; 
-            position: fixed; /* Fixed to prevent scrolling */
+            position: fixed; 
             top: 0; left: 0;
             width: 100%; 
             height: 100dvh; 
@@ -60,64 +60,88 @@
             display: block;
         }
 
-        /* Remote Video (Full Screen) */
         #remote-video {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            background: #121212; /* Placeholder color */
+            background: #121212;
         }
 
-        /* Local Video (Floating PIP) */
         #local-video {
             position: absolute; 
-            top: 50px; /* Safe distance from top */
+            top: 80px; /* Moved down slightly */
             right: 20px; 
             width: 100px; 
             height: 150px;
             background: #333; 
             border-radius: 12px; 
             border: 2px solid rgba(255,255,255,0.3);
-            transform: scaleX(-1); /* Mirror effect */
+            transform: scaleX(-1); 
             box-shadow: 0 4px 20px rgba(0,0,0,0.5); 
             z-index: 20;
             object-fit: cover;
         }
 
-        /* --- Status Pill (Top Center) --- */
-        #connection-status {
+        /* --- Status Pill & Share Button (Top Center) --- */
+        #top-bar-container {
             position: absolute;
-            top: 60px;
-            left: 20px;
-            background: rgba(30, 30, 30, 0.8);
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 25;
+            gap: 10px;
+        }
+
+        #connection-status {
+            background: rgba(30, 30, 30, 0.85);
             padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 30px;
             font-size: 0.85rem;
             font-weight: 500;
             display: flex;
             align-items: center;
             gap: 8px;
-            z-index: 15;
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.1);
         }
+        
         .status-dot { width: 8px; height: 8px; background: orange; border-radius: 50%; animation: blink 1.5s infinite; }
         @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
 
-        /* --- Bottom Control Bar (Mobile Style) --- */
+        /* SHARE BUTTON STYLE */
+        #btn-share-link {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        #btn-share-link:active { transform: scale(0.95); }
+
+        /* --- Bottom Control Bar --- */
         #controls-bar {
             position: absolute; 
             bottom: 0; 
             left: 0; 
             width: 100%;
-            height: 80px; /* Fixed height for touch targets */
+            height: 80px; 
             display: flex; 
             justify-content: space-evenly; 
             align-items: center;
             z-index: 30;
             background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(10px);
-            padding-bottom: env(safe-area-inset-bottom); /* iPhone Home Bar fix */
+            padding-bottom: env(safe-area-inset-bottom);
             border-top: 1px solid rgba(255,255,255,0.1);
         }
 
@@ -137,19 +161,16 @@
         }
         
         .control-btn i { font-size: 24px; }
-        
         .control-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.3); }
-        
         .control-btn.active { background: var(--text-primary); color: #000; }
         
         .control-btn.hangup { 
             background: var(--danger); 
-            width: 60px; 
-            height: 60px; 
+            width: 60px; height: 60px; 
             box-shadow: 0 4px 15px rgba(234, 67, 53, 0.4);
         }
 
-        /* --- Chat Drawer (Bottom Sheet) --- */
+        /* --- Chat Drawer --- */
         #chat-overlay {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 85%; 
             background: #1e1e1e; border-radius: 20px 20px 0 0;
@@ -164,7 +185,6 @@
             display: flex; justify-content: space-between; align-items: center;
             background: #1e1e1e; border-radius: 20px 20px 0 0;
         }
-        .chat-header h3 { font-size: 1.1rem; }
 
         .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #121212; }
 
@@ -174,8 +194,7 @@
         
         .chat-footer { 
             padding: 10px 15px; display: flex; align-items: center; gap: 10px;
-            background: #1e1e1e; 
-            padding-bottom: max(15px, env(safe-area-inset-bottom));
+            background: #1e1e1e; padding-bottom: max(15px, env(safe-area-inset-bottom));
         }
         
         .chat-input-wrapper { flex: 1; background: #333; border-radius: 24px; padding: 0 15px; display: flex; align-items: center; height: 48px; }
@@ -194,11 +213,9 @@
             font-weight: bold; font-size: 1.1rem; border: none; 
             margin-top: 40px; cursor: pointer; display: flex; align-items: center; gap: 10px;
             box-shadow: 0 4px 15px rgba(138, 180, 248, 0.3);
-            transition: transform 0.2s;
         }
-        .start-btn:active { transform: scale(0.95); }
 
-        #toast { position: fixed; top: 50px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 24px; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-size: 0.9rem; white-space: nowrap; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 24px; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-size: 0.9rem; white-space: nowrap; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -223,36 +240,35 @@
             <video id="remote-video" autoplay playsinline></video>
             <video id="local-video" autoplay playsinline muted></video>
             
-            <!-- Connection Status -->
-            <div id="connection-status">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="status-text">Connecting...</span>
+            <!-- TOP BAR: Status & Copy Link -->
+            <div id="top-bar-container">
+                <div id="connection-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Connecting...</span>
+                </div>
+                
+                <!-- NEW SHARE BUTTON -->
+                <button id="btn-share-link" onclick="shareRoom()">
+                    <i class="material-icons-round" style="font-size: 18px;">content_copy</i>
+                    Copy Link
+                </button>
             </div>
         </div>
 
         <!-- Mobile Bottom Controls -->
         <div id="controls-bar">
-            <!-- Audio Toggle (Speaker/Phone) -->
             <button class="control-btn" id="btn-audio-out" onclick="toggleAudioOutput()">
                 <i class="material-icons-round">volume_up</i>
             </button>
-            
-            <!-- Mic Toggle -->
             <button class="control-btn" id="btn-mic" onclick="toggleMic()">
                 <i class="material-icons-round">mic</i>
             </button>
-            
-            <!-- Hangup (Big Red Button) -->
             <button class="control-btn hangup" onclick="hangUp()">
                 <i class="material-icons-round" style="font-size: 32px;">call_end</i>
             </button>
-            
-            <!-- Camera Toggle -->
             <button class="control-btn" id="btn-cam" onclick="toggleCam()">
                 <i class="material-icons-round">videocam</i>
             </button>
-            
-            <!-- Chat Toggle -->
             <button class="control-btn" onclick="toggleChat()">
                 <i class="material-icons-round">chat_bubble_outline</i>
                 <div id="chat-badge" style="position:absolute; top:12px; right:12px; width:8px; height:8px; background:var(--danger); border-radius:50%; display:none;"></div>
@@ -265,22 +281,16 @@
                 <h3>Messages</h3>
                 <i class="material-icons-round" onclick="toggleChat()" style="padding:10px; cursor:pointer;">expand_more</i>
             </div>
-            
             <div class="chat-body" id="chat-body"></div>
             <div id="typing-indicator" style="padding: 0 20px; height: 20px; font-size: 0.75rem; color: var(--primary);"></div>
-            
             <div class="chat-footer">
                 <i class="material-icons-round icon-btn" onclick="shareLocation()">location_on</i>
-                
                 <label for="img-input" style="display:flex; margin:0;"><i class="material-icons-round icon-btn">image</i></label>
                 <input type="file" id="img-input" accept="image/*" hidden onchange="uploadImage(this)">
-                
                 <i class="material-icons-round icon-btn" id="btn-record" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">mic</i>
-                
                 <div class="chat-input-wrapper">
                     <input type="text" id="chat-input" placeholder="Type..." onkeyup="handleTyping(event)">
                 </div>
-                
                 <div class="control-btn active" onclick="sendMessage()" style="width: 40px; height: 40px; margin-left: 5px; background: var(--primary);">
                     <i class="material-icons-round" style="font-size: 20px; color: black;">send</i>
                 </div>
@@ -360,7 +370,7 @@
             document.getElementById('landing-page').style.display = 'none';
             document.getElementById('call-interface').style.display = 'block';
 
-            updateStatus(isCaller ? "Waiting..." : "Joining...");
+            updateStatus(isCaller ? "Share Link to Join" : "Joining...");
 
             db.ref(`rooms/${roomId}`).onDisconnect().remove();
 
@@ -424,14 +434,13 @@
                 remoteVideo.srcObject = event.streams[0];
                 updateStatus("Connected");
                 statusDot.style.background = "#34A853";
-                document.getElementById('connection-status').style.display = 'none';
+                document.getElementById('btn-share-link').style.display = 'none'; // Hide share button on connect
             };
             
             peerConnection.onconnectionstatechange = () => {
                 if (peerConnection.connectionState === 'disconnected') {
                     updateStatus("Disconnected");
                     statusDot.style.background = "red";
-                    document.getElementById('connection-status').style.display = 'flex';
                 }
             };
 
@@ -442,12 +451,23 @@
             statusText.innerText = text;
         }
 
+        function shareRoom() {
+            const url = window.location.href;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Join AnonCall',
+                    text: 'Join my secure video call via this link:',
+                    url: url
+                }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(url);
+                showToast("Link Copied! Send it to your friend.");
+            }
+        }
+
         // --- CONTROLS ---
         async function toggleAudioOutput() {
-            // Android Chrome/Firefox often handles this automatically via OS
-            // This button attempts to force switch if supported
             if (!('setSinkId' in HTMLMediaElement.prototype)) return showToast("Use phone volume keys");
-            
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const outputs = devices.filter(d => d.kind === 'audiooutput');
@@ -456,7 +476,6 @@
                     await remoteVideo.setSinkId(outputs[audioOutputIndex].deviceId);
                     const label = outputs[audioOutputIndex].label || "Speaker";
                     showToast(`Output: ${label}`);
-                    
                     const icon = label.toLowerCase().includes('head') ? 'headset' : 'volume_up';
                     document.getElementById('btn-audio-out').innerHTML = `<i class="material-icons-round">${icon}</i>`;
                 }
@@ -502,11 +521,9 @@
                     document.getElementById('chat-badge').style.display = 'block';
                 }
             });
-            
             const input = document.getElementById('chat-input');
             input.addEventListener('focus', () => db.ref(`rooms/${roomId}/typing`).set(isCaller ? "Caller" : "Peer"));
             input.addEventListener('blur', () => db.ref(`rooms/${roomId}/typing`).remove());
-            
             db.ref(`rooms/${roomId}/typing`).on('value', snap => {
                 const t = document.getElementById('typing-indicator');
                 const who = snap.val();
@@ -518,7 +535,6 @@
             const input = document.getElementById('chat-input');
             const val = content || input.value;
             if (!val.trim()) return;
-            
             db.ref(`rooms/${roomId}/messages`).push({
                 sender: isCaller ? 'caller' : 'peer',
                 type: type, content: val, timestamp: Date.now()
@@ -530,12 +546,10 @@
             const isMine = msg.sender === (isCaller ? 'caller' : 'peer');
             const div = document.createElement('div');
             div.className = `message ${isMine ? 'mine' : 'theirs'}`;
-            
             if (msg.type === 'text') div.textContent = msg.content;
             else if (msg.type === 'image') div.innerHTML = `<img src="${msg.content}" onclick="window.open('${msg.content}')" style="max-width:100%; border-radius:10px;">`;
             else if (msg.type === 'location') div.innerHTML = `<a href="${msg.content}" target="_blank" style="color:inherit;">📍 Location</a>`;
             else if (msg.type === 'audio') div.innerHTML = `<audio controls src="${msg.content}" style="width:180px; height:30px;"></audio>`;
-            
             chatBody.appendChild(div);
             chatBody.scrollTop = chatBody.scrollHeight;
         }
